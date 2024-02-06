@@ -2,8 +2,10 @@ package me.teakivy.teakstweaks.packs.items.armoredelytra;
 
 import me.teakivy.teakstweaks.packs.BasePack;
 import me.teakivy.teakstweaks.packs.PackType;
+import me.teakivy.teakstweaks.utils.Base64Serializer;
 import me.teakivy.teakstweaks.utils.Key;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.NBTComponent;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
@@ -16,14 +18,17 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemFactory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class ArmoredElytras extends BasePack {
@@ -91,13 +96,13 @@ public class ArmoredElytras extends BasePack {
                     event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1, 1);
 
                     try {
-                        item.getWorld().dropItem(item.getLocation(), getB64ChestplateFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
+                        item.getWorld().dropItem(item.getLocation(), getChestplateFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
                     try {
-                        item.getWorld().dropItem(item.getLocation(), getB64ElytraFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
+                        item.getWorld().dropItem(item.getLocation(), getElytraFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -120,8 +125,8 @@ public class ArmoredElytras extends BasePack {
         if (!itemStack.hasItemMeta()) return;
 
         if (itemStack.getItemMeta().getPersistentDataContainer().has(Key.get("armored_elytra"), PersistentDataType.STRING)) {
-            item.getWorld().dropItem(item.getLocation(), getB64ChestplateFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
-            item.getWorld().dropItem(item.getLocation(), getB64ElytraFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
+            item.getWorld().dropItem(item.getLocation(), getChestplateFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
+            item.getWorld().dropItem(item.getLocation(), getElytraFromArmoredElytra(itemStack)).setVelocity(new Vector(0, 0, 0));
             item.remove();
         }
     }
@@ -217,17 +222,23 @@ public class ArmoredElytras extends BasePack {
         return item;
     }
 
-    public static ItemStack getB64ChestplateFromArmoredElytra(ItemStack elytra) throws IOException {
-        if (!elytra.hasItemMeta()) return null;
-        if (!elytra.getItemMeta().getPersistentDataContainer().has(Key.get("armored_elytra"), PersistentDataType.STRING)) return null;
-        byte[] chestplate = elytra.getItemMeta().getPersistentDataContainer().get(Key.get("chestplate_storage"), PersistentDataType.BYTE_ARRAY);
-        return ItemStack.deserializeBytes(chestplate);
+    public static ItemStack getChestplateFromArmoredElytra(ItemStack elytra) throws IOException {
+        return getItemStackFromArmoredElytra(elytra, "chestplate_storage");
     }
 
-    public static ItemStack getB64ElytraFromArmoredElytra(ItemStack elytra) throws IOException {
+    public static ItemStack getElytraFromArmoredElytra(ItemStack elytra) throws IOException {
+        return getItemStackFromArmoredElytra(elytra, "elytra_storage");
+    }
+
+    public static ItemStack getItemStackFromArmoredElytra(ItemStack elytra, String key) throws IOException {
         if (!elytra.hasItemMeta()) return null;
-        if (!elytra.getItemMeta().getPersistentDataContainer().has(Key.get("armored_elytra"), PersistentDataType.STRING)) return null;
-        byte[] oldElytra = elytra.getItemMeta().getPersistentDataContainer().get(Key.get("elytra_storage"), PersistentDataType.BYTE_ARRAY);
-        return ItemStack.deserializeBytes(oldElytra);
+        PersistentDataContainer pdc = elytra.getItemMeta().getPersistentDataContainer();
+        if (!pdc.has(Key.get("armored_elytra"), PersistentDataType.STRING)) return null;
+        if (pdc.has(Key.get(key), PersistentDataType.STRING)) {
+            String chestplate = pdc.get(Key.get(key), PersistentDataType.STRING);
+            return Base64Serializer.itemStackArrayFromBase64(chestplate)[0];
+        }
+        byte[] rawStack = pdc.get(Key.get(key), PersistentDataType.BYTE_ARRAY);
+        return ItemStack.deserializeBytes(rawStack);
     }
 }
